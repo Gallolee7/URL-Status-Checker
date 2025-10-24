@@ -10,3 +10,22 @@
 - 详细的检查报告
 
 ## 安装
+bash
+pip install -r requirements.txt
+
+## 使用方法
+python
+from src.url_checker import URLChecker
+checker = URLChecker(timeout=5)
+results = checker.check_urls(['https://github.com
+', 'https://google.com
+'])
+print(results)
+
+## 命令行使用
+
+bash
+python src/checker_cli.py --file urls.txt
+
+## 许可证
+MIT License
