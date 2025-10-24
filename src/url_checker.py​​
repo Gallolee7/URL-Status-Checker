@@ -1,0 +1,55 @@
+import requests
+import concurrent.futures
+from typing import List, Dict
+import time
+
+class URLChecker:
+    def __init__(self, timeout: int = 10, max_workers: int = 5):
+        self.timeout = timeout
+        self.max_workers = max_workers
+        self.session = requests.Session()
+        self.session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (compatible; URL-Checker/1.0)'
+        })
+    
+    def check_single_url(self, url: str) -> Dict:
+        """检查单个URL的状态"""
+        start_time = time.time()
+        result = {
+            'url': url,
+            'status_code': None,
+            'error': None,
+            'response_time': 0,
+            'timestamp': time.time()
+        }
+        
+        try:
+            response = self.session.head(
+                url, 
+                timeout=self.timeout,
+                allow_redirects=True
+            )
+            result['status_code'] = response.status_code
+            result['response_time'] = round(time.time() - start_time, 2)
+            
+        except requests.exceptions.RequestException as e:
+            result['error'] = str(e)
+            # 如果HEAD失败，尝试GET请求
+            try:
+                response = self.session.get(
+                    url, 
+                    timeout=self.timeout,
+                    stream=True
+                )
+                result['status_code'] = response.status_code
+                result['response_time'] = round(time.time() - start_time, 2)
+            except:
+                pass
+                
+        return result
+    
+    def check_urls(self, urls: List[str]) -> List[Dict]:
+        """批量检查URL"""
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            results = list(executor.map(self.check_single_url, urls))
+        return results
