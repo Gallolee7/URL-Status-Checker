@@ -1,0 +1,64 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import sys
+
+# Make import robust: works when run as module (python -m ...) or as script.
+try:
+    from src.url_checker import URLChecker
+except Exception:
+    # fallback for direct script execution or different PYTHONPATH setups
+    try:
+        from url_checker import URLChecker
+    except Exception:
+        raise
+
+def main():
+    parser = argparse.ArgumentParser(description='检查URL状态')
+    parser.add_argument('--file', '-f', help='包含URL的文件路径')
+    parser.add_argument('--url', '-u', help='单个URL地址')
+    parser.add_argument('--timeout', '-t', type=int, default=10, help='超时时间（秒）')
+    parser.add_argument('--output', '-o', choices=['json', 'table'], default='table', help='输出格式')
+    
+    args = parser.parse_args()
+    urls = []
+    
+    if args.url:
+        urls.append(args.url)
+    elif args.file:
+        try:
+            with open(args.file, 'r') as f:
+                urls = [line.strip() for line in f if line.strip()]
+        except FileNotFoundError:
+            print(f"错误：文件 {args.file} 不存在")
+            sys.exit(1)
+    else:
+        print("请提供URL或文件路径")
+        parser.print_help()
+        sys.exit(1)
+    
+    checker = URLChecker(timeout=args.timeout)
+    results = checker.check_urls(urls)
+    
+    if args.output == 'json':
+        # ensure_ascii=False so Chinese text in CLI displays properly
+        print(json.dumps(results, indent=2, ensure_ascii=False))
+    else:
+        print("\nURL状态检查结果:")
+        print("-" * 80)
+        for result in results:
+            # use explicit .get to avoid KeyError and explicit None checks
+            status_code = result.get('status_code')
+            status = status_code if status_code is not None else 'ERROR'
+
+            response_time = result.get('response_time')
+            response_time_str = f"{response_time}s" if response_time is not None else "0s"
+
+            error = result.get('error') or ''
+
+            url = result.get('url') or '<unknown>'
+            print(f"{url} | 状态: {status} | 响应时间: {response_time_str} | {error}")
+        print("-" * 80)
+
+if __name__ == '__main__':
+    main()
